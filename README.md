@@ -3,7 +3,7 @@
 
 
 
-扫描出来的ip支持https，使用异步增加扫描速度，
+扫描出来的ip支持https，使用Python3异步增加扫描速度，
 http请求使用aiohttp模块
 
 
