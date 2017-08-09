@@ -25,20 +25,23 @@ class IpCreator:
         # self.read_from_file()
 
     async def generate_for_scan(self):
-        self.i += 1
-        return self.list[self.i]
+        if(len(self.list) == 0):
+            return None
+        return self.list.pop(0)
+
     def scan_ip(self):
         file = open("ip.txt")
         self.list = file.read().split('|')
         self.list.pop()
-        #print(self.list)
+        self.list.pop()
+        print(self.list)
+        # print(self.list)
         file.close()
-        self.i = 0
+
     def find_ip(self):
         with open("ip_range.txt") as fd:
             self.str = fd.read()
         self.read_from_file()
-
 
     def read_from_file(self):
         for i in self.str.splitlines():
@@ -50,7 +53,7 @@ class IpCreator:
         #print("end read from file")
 
     async def generate(self):
-        index = random.randint(0, len(self.listmax)-1)
+        index = random.randint(0, len(self.listmax) - 1)
         min = self.listmin[index].split('.')
         max = self.listmax[index].split('.')
         l = []
@@ -65,9 +68,5 @@ class IpCreator:
             else:
                 ip += "." + str(i)
         return ip
-test = IpCreator()
-test.find_ip()
-import asyncio
-loop = asyncio.get_event_loop()
-#print(loop.run_until_complete(test.generate()))
+
 
