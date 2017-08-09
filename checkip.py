@@ -7,8 +7,84 @@ import os
 import ssl
 import time
 import get_ip
+import random
 
 
+class UseIp:
+    def __init__(self, q):
+        self.q = q
+        self.count = 0
+        self.counttoo = 0
+        self.loop = loop
+        self.now = 0
+        self.max = 16
+        self._running = True
+
+    async def Server(self):
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        print("create session")
+
+        print("creat SaveIp worker")
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context), conn_timeout=1, read_timeout=1) as self.session:
+            create = True
+            print("create session Success")
+            while self._running:
+                if self.now < self.max and create:
+                    self.now += 1
+                    print("create task at", self.now)
+                    #print("start Task Sum: ", self.now)
+                    self.loop.create_task(self.worker())
+                else:
+                    await asyncio.sleep(5)
+
+    async def worker(self):
+        try:
+            while self._running:
+
+                print("wait get")
+                ip = await self.q.get()
+                print(" got")
+                #await asyncio.sleep(random.randint(1, 3))
+                await self.use(ip)
+                print(" used")
+
+        except KeyboardInterrupt as e:
+            self.loop.run_until_complete(self.stop())
+        finally:
+            self.now -= 1
+            #print("Task Done :", self.now)
+
+    async def use(self, ip):
+        try:
+            print("start use")
+            async with self.session.request("GET", "https://%s/_gh/" % ip, headers={"Host": "my-project-1-1469878073076.appspot.com"}, ) as resp:
+                headers = resp.headers
+                server_type = headers.get('Server', '')
+                len = headers.get('Content-Length', '')
+
+                if int(len) == 86:
+                    self.count = self.count + 1
+                    #print(ip,"status:", resp.status ,"time_used:", time_used)
+                    if(True):
+                        # print(await resp.text())
+                        context = ssl.create_default_context()
+                        context.check_hostname = False
+                        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=1, read_timeout=2) as session:
+                            async with session.request("GET", "https://%s/_gh/" % ip, headers={"Host": "my-project-1-1469878073076.appspot.com"}, ) as resp:
+                                headers = resp.headers
+                                server_type = headers.get('Server', '')
+                                len = headers.get('Content-Length', '')
+                                if int(len) == 86:
+                                    self.counttoo = self.counttoo + 1
+                                    print(
+                                        "In Use Success Too:", self.counttoo / self.count)
+                                    # print(await resp.text())
+                    return True
+                else:
+                    print("fail")
+        except BaseException as e:
+            print(e)
 class Test_Ip:
     def __init__(self, loop, ipCreator, f):
         self.loop = loop
@@ -23,6 +99,8 @@ class Test_Ip:
 
         if(self.scan):
             self.now = 0
+            self.count = 0
+            self.counttoo = 0
             self.ipcreator.scan_ip()
             self.generateIp = self.ipcreator.generate_for_scan
         else:
@@ -41,12 +119,25 @@ class Test_Ip:
                 len = headers.get('Content-Length', '')
 
                 if int(len) == 86:
+                    self.count = self.count + 1
                     end_time = time.time()
                     time_used = end_time - start_time
                     #print(ip,"status:", resp.status ,"time_used:", time_used)
                     self.d[ip] = time_used
                     if(self.scan):
-                        print(await resp.text())
+                        # print(await resp.text())
+                        context = ssl.create_default_context()
+                        context.check_hostname = False
+                        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=1, read_timeout=2) as session:
+                            async with session.request("GET", "https://%s/_gh/" % ip, headers={"Host": "my-project-1-1469878073076.appspot.com"}, ) as resp:
+                                headers = resp.headers
+                                server_type = headers.get('Server', '')
+                                len = headers.get('Content-Length', '')
+                                if int(len) == 86:
+                                    self.counttoo = self.counttoo + 1
+                                    print(
+                                        "Success Too:", self.counttoo / self.count)
+                                    # print(await resp.text())
                     return True
 
                 if resp.status == 503:
@@ -66,7 +157,7 @@ class Test_Ip:
         except KeyboardInterrupt as e:
             self.loop.run_until_complete(self.stop())
         except BaseException as e:
-            print(e)
+            # print(e)
             return False
             # print(e)
 
@@ -87,11 +178,11 @@ class Test_Ip:
                     print(ip, "Success time_used:", self.d[ip])
                     await self.q.put(ip)
                 else:
-                    print(ip, "Fail ")
+                    #print(ip, "Fail ")
                     if ip in self.d:
                         del self.d[ip]
                     #print(ip, "failed")
-                    
+
         except KeyboardInterrupt as e:
             self.loop.run_until_complete(self.stop())
         finally:
@@ -105,7 +196,7 @@ class Test_Ip:
         context = ssl.create_default_context()
         context.check_hostname = False
         print("create session")
-        
+
         if(not self.scan):
             self.loop.create_task(self.SaveIp())
 
@@ -116,7 +207,7 @@ class Test_Ip:
             while self._running:
                 if self.now < self.max and create:
                     self.now += 1
-                    print("create task at", self.now)
+                    #print("create task at", self.now)
                     #print("start Task Sum: ", self.now)
                     self.loop.create_task(self.worker())
                 else:
@@ -137,13 +228,13 @@ class Test_Ip:
 
     async def SaveIp(self):
         while self._running:
+            print("q.get")
             ip = await self.q.get()
-            #await asyncio.sleep(1)
+            # await asyncio.sleep(1)
             s = ip + "|"
             self.f.write(s)
             #print("file writed", s)
         self.now -= 1
-
 
 
 # os.fork()
@@ -166,7 +257,9 @@ try:
     f = None
     loop = asyncio.get_event_loop()
     testip = Test_Ip(loop, ipcreator, f)
+    useip = UseIp(testip.q)
     loop.create_task(testip.Server())
+    loop.create_task(useip.Server())
     loop.run_forever()
 
 except KeyboardInterrupt as e:
