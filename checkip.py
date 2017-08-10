@@ -27,7 +27,7 @@ class Test_Ip:
     async def test(self, ip):
         start_time = time.time()
         try:
-            async with self.session.request("GET", "https://%s/_gh/" % ip, headers={"Host": "my-project-1-1469878073076.appspot.com"}, ) as resp:
+            async with self.session.request("GET", "https://%s/_gh/" % ip, headers={"Host": "www.appspot.com"}, ) as resp:
                 headers = resp.headers
                 server_type = headers.get('Server', '')
                 len = headers.get('Content-Length', '')
