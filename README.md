@@ -8,7 +8,7 @@ http请求使用aiohttp模块
 
 
 
-使用方法: python3 checkip.py
+使用方法: 安装aiohttp模块后 python3 checkip.py
 扫描出来的ip放在ip.txt中
 
 
