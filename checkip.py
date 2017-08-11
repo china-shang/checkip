@@ -91,7 +91,9 @@ class Test_Ip:
                     self.ipSuccessSum += 1
                     print(ip, "Success time_used:", self.d[ip])
                     print("spend time:", time.time() - self.start_time)
-                    print("Success:%d  All:%d" % (self.ipSuccessSum, self.ipSum))
+                    print(
+                        "Success:%d  All:%d" %
+                        (self.ipSuccessSum, self.ipSum))
                     await self.q.put(ip)
                 else:
                     #print(ip, "Fail ")
@@ -162,15 +164,6 @@ class Test_Ip:
 # os.fork()
 # os.fork()
 # os.fork()
-
-
-async def SaveIp(q, f):
-    global Running
-    while Running:
-        ip = await q.get()
-        s = ip + "|"
-        f.write(s)
-        print("file writed", s)
 
 
 try:
