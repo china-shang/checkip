@@ -110,8 +110,6 @@ class Test_Ip:
             self.generateIp = self.ipcreator.generate
         print("get ipcreator")
         self.future = None
-=======
->>>>>>> master
 
     async def test(self, ip):
         start_time = time.time()
@@ -219,10 +217,7 @@ class Test_Ip:
                     if self.now == self.max:
                         self.future = asyncio.Future()
                 else:
-<<<<<<< HEAD
-=======
                     await self.future
->>>>>>> master
 
     async def stop(self):
         self._running = False
