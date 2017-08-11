@@ -101,7 +101,7 @@ class Test_Ip:
 
     async def stop(self):
         self._running = False
-        if self.future is None:
+        if self.future is not None:
             self.future.set_result("need stop")
         while self.now > 0:
             await asyncio.sleep(0.2)
