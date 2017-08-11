@@ -18,6 +18,7 @@ class Test_Ip:
         self.max = 64
         self.now = 1
         self._running = True
+<<<<<<< HEAD
         self.scan = True
         #self.scan = False
 
@@ -30,6 +31,9 @@ class Test_Ip:
             self.ipcreator.find_ip()
             self.generateIp = self.ipcreator.generate
         print("get ipcreator")
+=======
+        self.future = None
+>>>>>>> master
 
     async def test(self, ip):
         start_time = time.time()
@@ -96,6 +100,8 @@ class Test_Ip:
             self.loop.run_until_complete(self.stop())
         finally:
             self.now -= 1
+            if not self.future.done():
+                self.future.set_result("need task")
             #print("Task Done :", self.now)
             #self.now += 1
             ##print("start Task Sum: ", self.now)
@@ -119,11 +125,18 @@ class Test_Ip:
                     print("create task at", self.now)
                     #print("start Task Sum: ", self.now)
                     self.loop.create_task(self.worker())
+                    if self.now == self.max:
+                        self.future = asyncio.Future()
                 else:
-                    await asyncio.sleep(5)
+<<<<<<< HEAD
+=======
+                    await self.future
+>>>>>>> master
 
     async def stop(self):
         self._running = False
+        if self.future is None:
+            self.future.set_result("need stop")
         while self.now > 0:
             await asyncio.sleep(0.2)
             if(self.now == 1):
@@ -138,12 +151,11 @@ class Test_Ip:
     async def SaveIp(self):
         while self._running:
             ip = await self.q.get()
-            #await asyncio.sleep(1)
+            # await asyncio.sleep(1)
             s = ip + "|"
             self.f.write(s)
             #print("file writed", s)
         self.now -= 1
-
 
 
 # os.fork()
