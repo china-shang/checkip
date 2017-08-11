@@ -18,9 +18,10 @@ class Test_Ip:
         self.max = 64
         self.now = 1
         self._running = True
-<<<<<<< HEAD
-        self.scan = True
-        #self.scan = False
+        #self.scan = True
+        self.scan = False
+        self.ipSum = 0
+        self.ipSuccessSum = 0
 
         if(self.scan):
             self.now = 0
@@ -31,9 +32,7 @@ class Test_Ip:
             self.ipcreator.find_ip()
             self.generateIp = self.ipcreator.generate
         print("get ipcreator")
-=======
         self.future = None
->>>>>>> master
 
     async def test(self, ip):
         start_time = time.time()
@@ -49,8 +48,8 @@ class Test_Ip:
                     time_used = end_time - start_time
                     #print(ip,"status:", resp.status ,"time_used:", time_used)
                     self.d[ip] = time_used
-                    if(self.scan):
-                        print(await resp.text())
+                    # if(self.scan):
+                        # print(await resp.text())
                     return True
 
                 if resp.status == 503:
@@ -70,7 +69,7 @@ class Test_Ip:
         except KeyboardInterrupt as e:
             self.loop.run_until_complete(self.stop())
         except BaseException as e:
-            print(e)
+            # print(e)
             return False
             # print(e)
 
@@ -87,15 +86,19 @@ class Test_Ip:
                 if ip not in self.d:
                     self.d[ip] = 0
                 success = await self.test(ip)
+                self.ipSum += 1
                 if success:
+                    self.ipSuccessSum += 1
                     print(ip, "Success time_used:", self.d[ip])
+                    print("spend time:", time.time() - self.start_time)
+                    print("Success:%d  All:%d" % (self.ipSuccessSum, self.ipSum))
                     await self.q.put(ip)
                 else:
-                    print(ip, "Fail ")
+                    #print(ip, "Fail ")
                     if ip in self.d:
                         del self.d[ip]
                     #print(ip, "failed")
-                    
+
         except KeyboardInterrupt as e:
             self.loop.run_until_complete(self.stop())
         finally:
@@ -111,12 +114,13 @@ class Test_Ip:
         context = ssl.create_default_context()
         context.check_hostname = False
         print("create session")
-        
+
         if(not self.scan):
             self.loop.create_task(self.SaveIp())
 
         print("creat SaveIp worker")
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=1, read_timeout=1) as self.session:
+            self.start_time = time.time()
             create = True
             print("create session Success")
             while self._running:
@@ -128,10 +132,7 @@ class Test_Ip:
                     if self.now == self.max:
                         self.future = asyncio.Future()
                 else:
-<<<<<<< HEAD
-=======
                     await self.future
->>>>>>> master
 
     async def stop(self):
         self._running = False
@@ -174,8 +175,8 @@ async def SaveIp(q, f):
 
 try:
     ipcreator = get_ip.IpCreator()
-    #f = open("ip.txt", 'w')
-    f = None
+    f = open("ip.txt", 'w')
+    #f = None
     loop = asyncio.get_event_loop()
     testip = Test_Ip(loop, ipcreator, f)
     loop.create_task(testip.Server())
