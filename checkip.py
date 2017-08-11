@@ -9,7 +9,6 @@ import time
 import get_ip
 
 
-
 class Test_Ip:
     def __init__(self, loop, ipCreator, f):
         self.q = asyncio.Queue()
@@ -23,6 +22,7 @@ class Test_Ip:
         self.max = 64
         self.now = 1
         self._running = True
+        self.future = None
 
     async def test(self, ip):
         start_time = time.time()
@@ -72,6 +72,8 @@ class Test_Ip:
                     #print(ip, "failed")
         finally:
             self.now -= 1
+            if not self.future.done():
+                self.future.set_result("need task")
             #print("Task Done :", self.now)
             #self.now += 1
             ##print("start Task Sum: ", self.now)
@@ -92,11 +94,15 @@ class Test_Ip:
                     print("create task at", self.now)
                     #print("start Task Sum: ", self.now)
                     self.loop.create_task(self.worker())
+                    if self.now == self.max:
+                        self.future = asyncio.Future()
                 else:
-                    await asyncio.sleep(10)
+                    await self.future
 
     async def stop(self):
         self._running = False
+        if self.future is None:
+            self.future.set_result("need stop")
         while self.now > 0:
             await asyncio.sleep(0.2)
             if(self.now == 1):
@@ -110,12 +116,11 @@ class Test_Ip:
     async def SaveIp(self):
         while self._running:
             ip = await self.q.get()
-            #await asyncio.sleep(1)
+            # await asyncio.sleep(1)
             s = ip + "|"
             self.f.write(s)
             #print("file writed", s)
         self.now -= 1
-
 
 
 # os.fork()
