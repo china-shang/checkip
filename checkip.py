@@ -94,9 +94,10 @@ class Test_Ip:
         self.max = 64
         self.now = 1
         self._running = True
-<<<<<<< HEAD
-        self.scan = True
-        #self.scan = False
+        #self.scan = True
+        self.scan = False
+        self.ipSum = 0
+        self.ipSuccessSum = 0
 
         if(self.scan):
             self.now = 0
@@ -140,6 +141,8 @@ class Test_Ip:
                                     print(
                                         "Success Too:", self.counttoo / self.count)
                                     # print(await resp.text())
+                    # if(self.scan):
+                        # print(await resp.text())
                     return True
 
                 if resp.status == 503:
@@ -176,8 +179,12 @@ class Test_Ip:
                 if ip not in self.d:
                     self.d[ip] = 0
                 success = await self.test(ip)
+                self.ipSum += 1
                 if success:
+                    self.ipSuccessSum += 1
                     print(ip, "Success time_used:", self.d[ip])
+                    print("spend time:", time.time() - self.start_time)
+                    print("Success:%d  All:%d" % (self.ipSuccessSum, self.ipSum))
                     await self.q.put(ip)
                 else:
                     #print(ip, "Fail ")
@@ -206,6 +213,7 @@ class Test_Ip:
 
         print("creat SaveIp worker")
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=1, read_timeout=1) as self.session:
+            self.start_time = time.time()
             create = True
             print("create session Success")
             while self._running:
@@ -261,8 +269,8 @@ async def SaveIp(q, f):
 
 try:
     ipcreator = get_ip.IpCreator()
-    #f = open("ip.txt", 'w')
-    f = None
+    f = open("ip.txt", 'w')
+    #f = None
     loop = asyncio.get_event_loop()
     testip = Test_Ip(loop, ipcreator, f)
     useip = UseIp(testip.q)
