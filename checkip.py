@@ -63,9 +63,7 @@ class Test_Ip:
 
         except KeyboardInterrupt as e:
             #self.loop.run_until_complete(self.stop())
-            if(self._running):
-                #self._running = False
-                loop.call_soon(self.stop())
+            loop.call_soon(self.stop())
         except BaseException as e:
             # print(e)
             return False
@@ -74,9 +72,8 @@ class Test_Ip:
     async def worker(self):
         try:
             while self._running:
-                if self.ipSuccessSum > 3000:
-                    # TODO
-                    loop.create_task(self.stop())
+                if self.ipSuccessSum > 2000:
+                    loop.call_soon(self.stop())
                 ip = await self.generateIp()
                 if(ip is None):
                     break
@@ -101,8 +98,7 @@ class Test_Ip:
 
         except KeyboardInterrupt as e:
             #self.loop.run_until_complete(self.stop())
-            if(self._running):
-                loop.call_soon(self.stop())
+            loop.call_soon(self.stop())
         finally:
             self.now -= 1
             if not self.future.done():
