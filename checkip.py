@@ -62,7 +62,10 @@ class Test_Ip:
                     return True
 
         except KeyboardInterrupt as e:
-            self.loop.run_until_complete(self.stop())
+            #self.loop.run_until_complete(self.stop())
+            if(self._running):
+                #self._running = False
+                loop.call_soon(self.stop())
         except BaseException as e:
             # print(e)
             return False
@@ -71,7 +74,8 @@ class Test_Ip:
     async def worker(self):
         try:
             while self._running:
-                if self.ipSuccessSum > 300:
+                if self.ipSuccessSum > 3000:
+                    # TODO
                     loop.create_task(self.stop())
                 ip = await self.generateIp()
                 if(ip is None):
@@ -96,7 +100,9 @@ class Test_Ip:
                     # print(ip, "failed")
 
         except KeyboardInterrupt as e:
-            self.loop.run_until_complete(self.stop())
+            #self.loop.run_until_complete(self.stop())
+            if(self._running):
+                loop.call_soon(self.stop())
         finally:
             self.now -= 1
             if not self.future.done():
@@ -132,7 +138,7 @@ class Test_Ip:
 
     async def stop(self):
         self._running = False
-        if self.future is not None:
+        if self.future is not None and not self.future.done():
             self.future.set_result("need stop")
         while self.now > 0:
             await asyncio.sleep(0.2)
