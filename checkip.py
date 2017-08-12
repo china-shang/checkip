@@ -18,7 +18,7 @@ class Test_Ip:
         self.max = 64
         self.now = 1
         self._running = True
-        #self.scan = True
+        # self.scan = True
         self.scan = False
         self.ipSum = 0
         self.ipSuccessSum = 0
@@ -46,25 +46,20 @@ class Test_Ip:
                 if int(len) == 86:
                     end_time = time.time()
                     time_used = end_time - start_time
-                    #print(ip,"status:", resp.status ,"time_used:", time_used)
+                    # print(ip,"status:", resp.status ,"time_used:", time_used)
                     self.d[ip] = time_used
                     # if(self.scan):
                         # print(await resp.text())
                     return True
 
-                if resp.status == 503:
-                    # out of quota
-                    if "gws" not in server_type and "Google Frontend" not in server_type and "GFE" not in server_type:
-                        return False
-                    else:
-                        end_time = time.time()
-                        time_used = end_time - start_time
-                        #print(ip, "time_used:", time_used)
-                        self.d[ip] = time_used
-                        return True
-
-                else:
+                if "gws" not in server_type and "Google Frontend" not in server_type and "GFE" not in server_type:
                     return False
+                else:
+                    end_time = time.time()
+                    time_used = end_time - start_time
+                    # print(ip, "time_used:", time_used)
+                    self.d[ip] = time_used
+                    return True
 
         except KeyboardInterrupt as e:
             self.loop.run_until_complete(self.stop())
@@ -76,30 +71,29 @@ class Test_Ip:
     async def worker(self):
         try:
             while self._running:
-                if(len(self.d) > 200):
+                if self.ipSuccessSum > 300:
                     loop.create_task(self.stop())
                 ip = await self.generateIp()
                 if(ip is None):
                     break
 
-                #print("test ip")
+                # print("test ip")
                 if ip not in self.d:
                     self.d[ip] = 0
                 success = await self.test(ip)
                 self.ipSum += 1
                 if success:
                     self.ipSuccessSum += 1
-                    print(ip, "Success time_used:", self.d[ip])
-                    print("spend time:", time.time() - self.start_time)
+                    print(ip, "Success delay:%.2f" % self.d[ip])
+                    print("spend time:%d" % (time.time() - self.start_time))
                     print(
                         "Success:%d  All:%d" %
                         (self.ipSuccessSum, self.ipSum))
-                    await self.q.put(ip)
-                else:
-                    #print(ip, "Fail ")
                     if ip in self.d:
                         del self.d[ip]
-                    #print(ip, "failed")
+                    await self.q.put(ip)
+                    # print(ip, "Fail ")
+                    # print(ip, "failed")
 
         except KeyboardInterrupt as e:
             self.loop.run_until_complete(self.stop())
@@ -107,9 +101,9 @@ class Test_Ip:
             self.now -= 1
             if not self.future.done():
                 self.future.set_result("need task")
-            #print("Task Done :", self.now)
-            #self.now += 1
-            ##print("start Task Sum: ", self.now)
+            # print("Task Done :", self.now)
+            # self.now += 1
+            # print("start Task Sum: ", self.now)
             # self.loop.create_task(self.worker())
 
     async def Server(self):
@@ -121,7 +115,7 @@ class Test_Ip:
             self.loop.create_task(self.SaveIp())
 
         print("creat SaveIp worker")
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=1, read_timeout=1) as self.session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=0.5, read_timeout=0.5) as self.session:
             self.start_time = time.time()
             create = True
             print("create session Success")
@@ -129,7 +123,7 @@ class Test_Ip:
                 if self.now < self.max and create:
                     self.now += 1
                     print("create task at", self.now)
-                    #print("start Task Sum: ", self.now)
+                    # print("start Task Sum: ", self.now)
                     self.loop.create_task(self.worker())
                     if self.now == self.max:
                         self.future = asyncio.Future()
@@ -149,6 +143,7 @@ class Test_Ip:
             self.f.close()
             print("file closed")
         print("Success stop")
+        self.loop.stop()
         return True
 
     async def SaveIp(self):
@@ -157,7 +152,7 @@ class Test_Ip:
             # await asyncio.sleep(1)
             s = ip + "|"
             self.f.write(s)
-            #print("file writed", s)
+            # print("file writed", s)
         self.now -= 1
 
 
@@ -169,7 +164,7 @@ class Test_Ip:
 try:
     ipcreator = get_ip.IpCreator()
     f = open("ip.txt", 'w')
-    #f = None
+    # f = None
     loop = asyncio.get_event_loop()
     testip = Test_Ip(loop, ipcreator, f)
     loop.create_task(testip.Server())
