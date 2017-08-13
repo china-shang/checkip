@@ -12,6 +12,7 @@ import get_ip
 class Test_Ip:
     def __init__(self, loop, ipCreator, f):
         self.loop = loop
+        self.indexDict = dict()
         self.d = dict()
         self.ipcreator = ipCreator
         self.q = asyncio.Queue()
@@ -62,7 +63,7 @@ class Test_Ip:
                     return True
 
         except KeyboardInterrupt as e:
-            #self.loop.run_until_complete(self.stop())
+            # self.loop.run_until_complete(self.stop())
             loop.call_soon(self.stop())
         except BaseException as e:
             # print(e)
@@ -74,6 +75,7 @@ class Test_Ip:
             while self._running:
                 if self.ipSuccessSum > 2000:
                     loop.call_soon(self.stop())
+                    break
                 ip = await self.generateIp()
                 if(ip is None):
                     break
@@ -84,6 +86,12 @@ class Test_Ip:
                 success = await self.test(ip)
                 self.ipSum += 1
                 if success:
+                    index = self.ipcreator.getIndex()
+                    if index not in self.indexDict:
+                        self.indexDict[index] = 1
+                    else:
+                        self.indexDict[index] += 1
+
                     self.ipSuccessSum += 1
                     print(ip, "Success delay:%.2f" % self.d[ip])
                     print("spend time:%d" % (time.time() - self.start_time))
@@ -97,7 +105,7 @@ class Test_Ip:
                     # print(ip, "failed")
 
         except KeyboardInterrupt as e:
-            #self.loop.run_until_complete(self.stop())
+            # self.loop.run_until_complete(self.stop())
             loop.call_soon(self.stop())
         finally:
             self.now -= 1
@@ -105,10 +113,10 @@ class Test_Ip:
                 self.future.set_result("need task")
             # print("Task Done :", self.now)
             # self.now += 1
-            # print("start Task Sum: ", self.now)
             # self.loop.create_task(self.worker())
 
     async def Server(self):
+        self.startIndex = self.ipcreator.getIndex()
         context = ssl.create_default_context()
         context.check_hostname = False
         print("create session")
@@ -124,7 +132,7 @@ class Test_Ip:
             while self._running:
                 if self.now < self.max and create:
                     self.now += 1
-                    print("create task at", self.now)
+                    #print("create task at", self.now)
                     # print("start Task Sum: ", self.now)
                     self.loop.create_task(self.worker())
                     if self.now == self.max:
@@ -144,7 +152,14 @@ class Test_Ip:
         if(self.scan is False):
             self.f.close()
             print("file closed")
+        index = ipcreator.getIndex()
+        with open("ip_has_find.txt", "w") as f:
+            f.write(str(index))
+        print("index saved:", index)
         print("Success stop")
+        for i in self.indexDict.items():
+            print(i[0], ":", i[1])
+
         self.loop.stop()
         return True
 
