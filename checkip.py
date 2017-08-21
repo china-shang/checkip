@@ -64,7 +64,12 @@ class Test_Ip:
 
         except KeyboardInterrupt as e:
             # self.loop.run_until_complete(self.stop())
-            loop.call_soon(self.stop())
+            if self._running:
+                self._running = False
+                loop.create_task(self.stop())
+            if self._running:
+                self._running = False
+                loop.create_task(self.stop())
         except BaseException as e:
             # print(e)
             return False
@@ -74,8 +79,10 @@ class Test_Ip:
         try:
             while self._running:
                 if self.ipSuccessSum > 2000:
-                    loop.call_soon(self.stop())
-                    break
+                    if self._running:
+                        self._running = False
+                        loop.create_task(self.stop())
+                        break
                 ip = await self.generateIp()
                 if(ip is None):
                     break
@@ -101,12 +108,13 @@ class Test_Ip:
                     if ip in self.d:
                         del self.d[ip]
                     await self.q.put(ip)
-                    # print(ip, "Fail ")
-                    # print(ip, "failed")
+                #print(ip, "Fail ")
 
         except KeyboardInterrupt as e:
             # self.loop.run_until_complete(self.stop())
-            loop.call_soon(self.stop())
+            if self._running:
+                self._running = False
+                loop.create_task(self.stop())
         finally:
             self.now -= 1
             if not self.future.done():
@@ -116,6 +124,7 @@ class Test_Ip:
             # self.loop.create_task(self.worker())
 
     async def Server(self):
+        self.Running = asyncio.Future()
         self.startIndex = self.ipcreator.getIndex()
         context = ssl.create_default_context()
         context.check_hostname = False
@@ -129,6 +138,7 @@ class Test_Ip:
             self.start_time = time.time()
             create = True
             print("create session Success")
+            print("Start Scan Ip")
             while self._running:
                 if self.now < self.max and create:
                     self.now += 1
@@ -157,10 +167,13 @@ class Test_Ip:
             f.write(str(index))
         print("index saved:", index)
         print("Success stop")
-        for i in self.indexDict.items():
-            print(i[0], ":", i[1])
-
-        self.loop.stop()
+        with open("find_log.txt", "a") as f:
+            for i in self.indexDict.items():
+                print(i[0], ":", i[1])
+                f.write(str(i[0]) + ":" + str(i[1]) + "\n")
+        if not self.Running.done():
+            print("set Running result")
+            self.Running.set_result("stoped")
         return True
 
     async def SaveIp(self):
@@ -171,6 +184,12 @@ class Test_Ip:
             self.f.write(s)
             # print("file writed", s)
         self.now -= 1
+
+    async def SuccessStop(self):
+        if self.Running.done():
+            return True
+        await self.Running
+        return True
 
 
 # os.fork()
@@ -185,11 +204,11 @@ try:
     loop = asyncio.get_event_loop()
     testip = Test_Ip(loop, ipcreator, f)
     loop.create_task(testip.Server())
-    loop.run_forever()
+    loop.run_until_complete(testip.SuccessStop())
 
 except KeyboardInterrupt as e:
-    loop.run_until_complete(testip.stop())
+    loop.create_task(testip.stop())
+    loop.run_until_complete(testip.SuccessStop())
 
 finally:
-    loop.stop()
     loop.close()

@@ -43,7 +43,8 @@ class IpCreator:
 
     def find_ip(self):
         with open("ip_has_find.txt") as f:
-            self.index = int(f.read())+1
+            self.index = int(f.read()) + 1
+            self.startIndex = self.index
         print("index", self.index)
         with open("ip_range.txt") as fd:
             self.str = fd.read()
@@ -52,13 +53,14 @@ class IpCreator:
         for i in range(len(self.listmax)):
             min = self.listmin[i]
             max = self.listmax[i]
+            t = 0
             for j in range(4):
-                sum = 1
                 if min[j] == max[j]:
                     pass
                 else:
-                    sum *= sum * int(max[j]) - int(min[j])
-            self.sum += sum
+                    t += (int(max[j]) - int(min[j])) * 256**(3 - j)
+            self.sum += t
+        self.indexSum = len(self.listmax) - 1
         print("all ip : %d" % self.sum)
         self.lastIp = self.listmin[self.index]
 
@@ -92,6 +94,8 @@ class IpCreator:
         return ip
 
     def ip_add(self):
+        if self.index == self.startIndex - 1:
+            raise KeyboardInterrupt
         t = self.lastIp
         self.lastIp[3] += 1
         for i in range(2, -1, -1):
@@ -99,13 +103,16 @@ class IpCreator:
                 self.lastIp[i + 1] = 0
                 self.lastIp[i] = self.lastIp[i] + 1
         if self.lastIp[0] == 256:
-            self.index += 1
+            self.index = (self.index + 1) % self.indexSum
+            print("index :", self.index)
+
             self.lastIp = self.listmin[self.index]
             return t
         for i in range(4):
             if self.lastIp[i] < self.listmax[self.index][i]:
                 return t
         else:
-            self.index += 1
+            self.index = (self.index + 1) % self.indexSum
             self.lastIp = self.listmin[self.index]
+            print("index :", self.index)
             return t
