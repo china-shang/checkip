@@ -1,24 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-#import asyncio
-#loop = asyncio.get_event_loop()
-#queue = asyncio.Queue(900)
-# async def Puts(queue, list):
-    # for i in list:
-        #print("put", i)
-        # await queue.put(i)
-    # return 0
-
-#asyncio.ensure_future(Puts(queue, list))
-
-# loop.run_forever()
-# loop.close()
 import random
+import os
 
 
 class IpCreator:
-    def __init__(self):
+    def __init__(self, start, Range, IprangeStr):
+        self.str = IprangeStr
+        self.Range = Range
+        self.index = start
+        self.hasFind = 0
         self.listmin = []
         self.listmax = []
         self.used = []
@@ -42,12 +33,9 @@ class IpCreator:
         return self.index
 
     def find_ip(self):
-        with open("ip_has_find.txt") as f:
-            self.index = int(f.read()) + 1
-            self.startIndex = self.index
-        print("index", self.index)
-        with open("ip_range.txt") as fd:
-            self.str = fd.read()
+        print("pid:%d\tindex:" % os.getpid(), self.index)
+        # with open("ip_range.txt") as fd:
+            #self.str = fd.read()
         self.read_from_file()
         self.sum = 0
         for i in range(len(self.listmax)):
@@ -94,7 +82,8 @@ class IpCreator:
         return ip
 
     def ip_add(self):
-        if self.index == self.startIndex - 1:
+        if self.hasFind >= self.Range:
+            print("Find Done")
             raise KeyboardInterrupt
         t = self.lastIp
         self.lastIp[3] += 1
@@ -104,7 +93,8 @@ class IpCreator:
                 self.lastIp[i] = self.lastIp[i] + 1
         if self.lastIp[0] == 256:
             self.index = (self.index + 1) % self.indexSum
-            print("index :", self.index)
+            self.hasFind += 1
+            print("pid:%d\tindex :" % os.getpid(), self.index)
 
             self.lastIp = self.listmin[self.index]
             return t
@@ -113,6 +103,7 @@ class IpCreator:
                 return t
         else:
             self.index = (self.index + 1) % self.indexSum
+            self.hasFind += 1
             self.lastIp = self.listmin[self.index]
-            print("index :", self.index)
+            print("pid:%d\tindex :" % os.getpid(), self.index)
             return t
