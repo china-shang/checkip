@@ -9,6 +9,7 @@ import time
 import get_ip
 import multiprocessing
 from multiprocessing import Process, Queue
+import random
 
 q = Queue()
 q.put(0)
@@ -17,7 +18,7 @@ ipList = Queue()
 
 ipLineSum = 1835
 ipHasFind = 0
-ProcessSum = 8
+ProcessSum = 4
 perProcess = int(ipLineSum / ProcessSum)
 
 
@@ -156,8 +157,8 @@ class Test_Ip:
             if(self.now == 1):
                 await self.q.put("end")
             print("stopping  wait %2d worker stop" % self.now)
-        #if(self.scan is False):
-            ##self.f.close()
+        # if(self.scan is False):
+            # self.f.close()
             #print("file closed")
         file_name = "ip_has_find" + str(self.num) + ".txt"
         with open(file_name, "w") as f:
@@ -188,10 +189,10 @@ class Test_Ip:
         return True
 
 
-def Task(start, Range, IprangeStr):
+def Task(start, q, IprangeStr, *, add=True):
     try:
         loop = asyncio.get_event_loop()
-        ipcreator = get_ip.IpCreator(start, Range, IprangeStr)
+        ipcreator = get_ip.IpCreator(start, q, IprangeStr, add=add)
         testip = Test_Ip(loop, ipcreator)
         loop.create_task(testip.Server())
         loop.run_until_complete(testip.SuccessStop())
@@ -210,23 +211,20 @@ if os.path.exists("ip_has_find.txt"):
     with open("ip_has_find.txt", "r") as f:
         ipHasFind = int(f.read())
 else:
-    ipHasFind = 0
+    ipHasFind = random.randint(0, ipLineSum)
 
 with open("ip_range.txt") as fd:
     IprangeStr = fd.read()
 processList = []
-for i in range(ProcessSum):
-    file_name = "ip_has_find" + str(i) + ".txt"
-    if os.path.exists(file_name):
-        with open(file_name) as f:
-            start = int(f.read())
-    else:
-        start = (ipHasFind + perProcess * i) % ipLineSum
-    processList.append(
-        Process(target=Task,
-                args=(start, perProcess, IprangeStr))
-    )
-    processList[i].start()
+for i in range(int(ProcessSum / 2)):
+    start = (ipHasFind + perProcess * i * 2) % ipLineSum
+    end = (start + perProcess * i * 2) % ipLineSum
+    q = Queue()
+    q.put(perProcess * 2)
+    Process(target=Task, args=(start, q, IprangeStr)).start()
+    Process(target=Task, args=(end, q, IprangeStr),
+            kwargs={"add": False}, 
+            ).start()
 with open("ip.txt", "w") as f:
     sum = 0
     while True:

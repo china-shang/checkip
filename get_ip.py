@@ -5,14 +5,16 @@ import os
 
 
 class IpCreator:
-    def __init__(self, start, Range, IprangeStr):
+    def __init__(self, start, q, IprangeStr, *, add=True):
         self.str = IprangeStr
-        self.Range = Range
+        self.add = add
+        self.q = q
         self.index = start
         self.hasFind = 0
         self.listmin = []
         self.listmax = []
         self.used = []
+        print(self.add)
         # self.read_from_file()
 
     async def generate_for_scan(self):
@@ -82,9 +84,12 @@ class IpCreator:
         return ip
 
     def ip_add(self):
-        if self.hasFind >= self.Range:
+        num = self.q.get()
+        if num <= 0:
             print("Find Done")
+            self.q.put(num)
             raise KeyboardInterrupt
+        self.q.put(num)
         t = self.lastIp
         self.lastIp[3] += 1
         for i in range(2, -1, -1):
@@ -92,9 +97,14 @@ class IpCreator:
                 self.lastIp[i + 1] = 0
                 self.lastIp[i] = self.lastIp[i] + 1
         if self.lastIp[0] == 256:
-            self.index = (self.index + 1) % self.indexSum
+            if self.add:
+                self.index = (self.index + 1) % self.indexSum
+            else:
+                self.index = (self.index - 1) % self.indexSum
             self.hasFind += 1
-            print("pid:%d\tindex :" % os.getpid(), self.index)
+            num = self.q.get()
+            self.q.put(num - 1)
+            print("pid:%d\tleave index :" % os.getpid(), num)
 
             self.lastIp = self.listmin[self.index]
             return t
@@ -102,8 +112,14 @@ class IpCreator:
             if self.lastIp[i] < self.listmax[self.index][i]:
                 return t
         else:
-            self.index = (self.index + 1) % self.indexSum
+            num = self.q.get()
+            self.q.put(num - 1)
+            if self.add:
+                self.index = (self.index + 1) % self.indexSum
+            else:
+                self.index = (self.index - 1) % self.indexSum
+
             self.hasFind += 1
             self.lastIp = self.listmin[self.index]
-            print("pid:%d\tindex :" % os.getpid(), self.index)
+            print("pid:%d\tleave index :" % os.getpid(), num)
             return t
