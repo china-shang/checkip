@@ -215,6 +215,24 @@ class Task:
         p2.start()
 
 
+def main():
+    for i in range(ProcessSum // 2):
+        startindex = (ipHasFind + perProcess * i * 2) % ipLineSum
+        task = Task(startindex, iprange)
+        task.start()
+
+    try:
+        with open("ip.txt", "w") as f:
+            sum = 0
+            while True:
+                ip = ipList.get()
+                s = ip + "|"
+                f.write(s)
+                sum += 1
+                print("All Sucess Ip:%4d" % sum)
+    except (KeyboardInterrupt, SystemExit) as e:
+        print("main exited")
+
 ipLineSum = 1835
 ipHasFind = 0
 ProcessSum = 4
@@ -229,19 +247,6 @@ else:
 with open("ip_range.txt") as fd:
     iprange = fd.read()
 
-for i in range(ProcessSum // 2):
-    startindex = (ipHasFind + perProcess * i * 2) % ipLineSum
-    task = Task(startindex, iprange)
-    task.start()
 
-try:
-    with open("ip.txt", "w") as f:
-        sum = 0
-        while True:
-            ip = ipList.get()
-            s = ip + "|"
-            f.write(s)
-            sum += 1
-            print("All Sucess Ip:%4d" % sum)
-except (KeyboardInterrupt, SystemExit) as e:
-    print("main exited")
+if __name__ == "__main__":
+    main()
