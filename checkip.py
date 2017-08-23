@@ -11,25 +11,15 @@ import multiprocessing
 from multiprocessing import Process, Queue
 import random
 
-q = Queue()
-q.put(0)
 ipList = Queue()
 
 
-ipLineSum = 1835
-ipHasFind = 0
-ProcessSum = 4
-perProcess = int(ipLineSum / ProcessSum)
-
-
 class Test_Ip:
-    def __init__(self, loop, ipCreator):
+    def __init__(self, loop, ipfactory):
         self.loop = loop
         self.indexDict = dict()
         self.d = dict()
-        self.num = q.get()
-        q.put(self.num + 1)
-        self.ipcreator = ipCreator
+        self.ipfactory = ipfactory
         self.q = asyncio.Queue()
         self.max = 64
         self.now = 1
@@ -37,18 +27,19 @@ class Test_Ip:
         self.future = None
         # self.scan = True
         self.scan = False
+        self.num = 0
         self.ipSum = 0
         self.ipSuccessSum = 0
 
         if(self.scan):
             self.now = 0
-            self.ipcreator.scan_ip()
-            self.generateIp = self.ipcreator.generate_for_scan
+            self.ipfactory.scan_ip()
+            self.generateIp = self.ipfactory.generate_for_scan
         else:
             #file_name = "ip" + str(self.num) + ".txt"
             #self.f = open(file_name, 'w')
-            self.ipcreator.find_ip()
-            self.generateIp = self.ipcreator.generate
+            self.ipfactory.find_ip()
+            self.generateIp = self.ipfactory.generate
 
     async def test(self, ip):
         start_time = time.time()
@@ -60,14 +51,6 @@ class Test_Ip:
                 len = headers.get('Content-Length', '')
 
                 if int(len) == 86:
-                    end_time = time.time()
-                    time_used = end_time - start_time
-                    self.d[ip] = time_used
-                    return True
-
-                if "gws" not in server_type and "Google Frontend" not in server_type and "GFE" not in server_type:
-                    return False
-                else:
                     end_time = time.time()
                     time_used = end_time - start_time
                     self.d[ip] = time_used
@@ -85,7 +68,7 @@ class Test_Ip:
         try:
             while self._running:
                 ip = await self.generateIp()
-                self.index = self.ipcreator.getIndex()
+                self.index = self.ipfactory.getIndex()
                 if(ip is None):
                     break
 
@@ -125,23 +108,22 @@ class Test_Ip:
 
     async def Server(self):
         self.Running = asyncio.Future()
-        self.startIndex = self.ipcreator.getIndex()
+        self.startindexIndex = self.ipfactory.getIndex()
         context = ssl.create_default_context()
         context.check_hostname = False
 
         if(not self.scan):
             self.loop.create_task(self.SaveIp())
 
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=0.5, read_timeout=0.5) as self.session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True), conn_timeout=1, read_timeout=0.8) as self.session:
             self.start_time = time.time()
-            create = True
             #print("create session Success")
-            #print("Start Scan Ip")
+            #print("startindex Scan Ip")
             while self._running:
-                if self.now < self.max and create:
+                if self.now < self.max:
                     self.now += 1
                     #print("create task at", self.now)
-                    # print("start Task Sum: ", self.now)
+                    # print("startindex Task Sum: ", self.now)
                     self.loop.create_task(self.worker())
                     if self.now == self.max:
                         self.future = asyncio.Future()
@@ -160,18 +142,16 @@ class Test_Ip:
         # if(self.scan is False):
             # self.f.close()
             #print("file closed")
-        file_name = "ip_has_find" + str(self.num) + ".txt"
-        with open(file_name, "w") as f:
-            f.write(str(self.index))
-        print("index saved:", self.index)
-        print("Success stop")
+        #file_name = "ip_has_find" + str(self.num) + ".txt"
+        #with open(file_name, "w") as f:
+            #f.write(str(self.index))
+        #print("index saved:", self.index)
         file_name = "find_log" + str(self.num) + ".txt"
         with open(file_name, "a") as f:
             for i in self.indexDict.items():
                 print(i[0], ":", i[1])
                 f.write(str(i[0]) + ":" + str(i[1]) + "\n")
         if not self.Running.done():
-            print("set Running result")
             self.Running.set_result("stoped")
         return True
 
@@ -184,52 +164,84 @@ class Test_Ip:
 
     async def SuccessStop(self):
         if self.Running.done():
-            return True
-        await self.Running
+            pass
+        else:
+            await self.Running
+        print("Success stop")
         return True
 
 
-def Task(start, q, IprangeStr, *, add=True):
-    try:
-        loop = asyncio.get_event_loop()
-        ipcreator = get_ip.IpCreator(start, q, IprangeStr, add=add)
-        testip = Test_Ip(loop, ipcreator)
-        loop.create_task(testip.Server())
-        loop.run_until_complete(testip.SuccessStop())
+class CheckProcess(Process):
+    def __init__(self, startindex, q, iprange, *, increasing=True):
+        self.startindex = startindex
+        self.q = q
+        self.iprange = iprange
+        self.increasing = increasing
+        super().__init__()
 
-    except (KeyboardInterrupt, SystemExit) as e:
-        print("this Task")
-        loop.create_task(testip.stop())
-        loop.run_until_complete(testip.SuccessStop())
+    def run(self):
+        try:
+            loop = asyncio.get_event_loop()
+            ipfactory = get_ip.ipFactory(self.startindex, self.q, self.iprange,
+                                         increasing=self.increasing)
+            testip = Test_Ip(loop, ipfactory)
+            loop.create_task(testip.Server())
+            loop.run_until_complete(testip.SuccessStop())
 
-    finally:
-        loop.close()
-        print("Task exit")
+        except (KeyboardInterrupt, SystemExit) as e:
+            loop.create_task(testip.stop())
+            loop.run_until_complete(testip.SuccessStop())
 
+        finally:
+            loop.close()
+            print("Task exit")
+
+
+class Task:
+    def __init__(self, startindex, iprange):
+        self.startindex = startindex
+        self.ipfactory = iprange
+        self.q = Queue()
+        self.q.put(perProcess * 2)
+
+    def start(self):
+        p1 = CheckProcess(self.startindex, self.q, self.ipfactory)
+        p2 = CheckProcess(
+            (self.startindex + perProcess * 2) % ipLineSum,
+            self.q,
+            self.ipfactory,
+            increasing=False)
+        p1.start()
+        p2.start()
+
+
+ipLineSum = 1835
+ipHasFind = 0
+ProcessSum = 4
+perProcess = int(ipLineSum / ProcessSum)
 
 if os.path.exists("ip_has_find.txt"):
-    with open("ip_has_find.txt", "r") as f:
+    with open("ip_has_find0.txt", "r") as f:
         ipHasFind = int(f.read())
 else:
     ipHasFind = random.randint(0, ipLineSum)
 
 with open("ip_range.txt") as fd:
-    IprangeStr = fd.read()
-processList = []
-for i in range(int(ProcessSum / 2)):
-    start = (ipHasFind + perProcess * i * 2) % ipLineSum
-    end = (start + perProcess * i * 2) % ipLineSum
-    q = Queue()
-    q.put(perProcess * 2)
-    Process(target=Task, args=(start, q, IprangeStr)).start()
-    Process(target=Task, args=(end, q, IprangeStr),
-            kwargs={"add": False}, 
-            ).start()
-with open("ip.txt", "w") as f:
-    sum = 0
-    while True:
-        ip = ipList.get()
-        s = ip + "|"
-        f.write(s)
-        sum += 1
-        print("All Sucess Ip:%4d" % sum)
+    iprange = fd.read()
+
+for i in range(ProcessSum // 2):
+    startindex = (ipHasFind + perProcess * i * 2) % ipLineSum
+    task = Task(startindex, iprange)
+    task.start()
+
+try:
+    with open("ip.txt", "w") as f:
+        sum = 0
+        while True:
+            ip = ipList.get()
+            s = ip + "|"
+            f.write(s)
+            sum += 1
+            print("All Sucess Ip:%4d" % sum)
+except (KeyboardInterrupt, SystemExit) as e:
+    print("main exited")
