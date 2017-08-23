@@ -17,7 +17,7 @@ class ipFactory:
         self.used = []
         # self.read_from_file()
 
-    async def generate_for_scan(self):
+    async def getip_for_scan(self):
         if(len(self.list) == 0):
             return None
         return self.list.pop(0)
@@ -73,7 +73,7 @@ class ipFactory:
             self.listmin.append(min)
         #print("end read from file")
 
-    async def generate(self):
+    async def getip(self):
         l = self.ip_increasing()
         ip = ""
         for i in l:

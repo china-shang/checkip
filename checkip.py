@@ -34,12 +34,12 @@ class Test_Ip:
         if(self.scan):
             self.now = 0
             self.ipfactory.scan_ip()
-            self.generateIp = self.ipfactory.generate_for_scan
+            self.getip = self.ipfactory.getip_for_scan
         else:
             #file_name = "ip" + str(self.num) + ".txt"
             #self.f = open(file_name, 'w')
             self.ipfactory.find_ip()
-            self.generateIp = self.ipfactory.generate
+            self.getip = self.ipfactory.getip
 
     async def test(self, ip):
         start_time = time.time()
@@ -67,7 +67,7 @@ class Test_Ip:
     async def worker(self):
         try:
             while self._running:
-                ip = await self.generateIp()
+                ip = await self.getip()
                 self.index = self.ipfactory.getIndex()
                 if(ip is None):
                     break
