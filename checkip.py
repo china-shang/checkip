@@ -15,12 +15,15 @@ with open("ip_range.txt") as fd:
     iprangelen = iprange.count('\n')
 
 if os.path.exists("ip_has_find.txt"):
-    with open("ip_has_find0.txt", "r") as f:
+    with open("ip_has_find.txt", "r") as f:
         ipHasFind = int(f.read()) % iprangelen
 else:
     ipHasFind = random.randint(0, iprangelen - 1)
+ipHasFind = 704
 
-ProcessSum = 3
+ProcessSum = 2
+ActiveProcess = Queue()
+ActiveProcess.put(ProcessSum)
 
 
 class Test_Ip:
@@ -96,6 +99,7 @@ class Test_Ip:
             if self._running:
                 self._running = False
                 self.loop.create_task(self.stop())
+
         finally:
             self.now -= 1
             if not self.future.done():
@@ -111,7 +115,7 @@ class Test_Ip:
             self.loop.create_task(self.SaveIp())
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True),
-                                         conn_timeout=1, read_timeout=0.8) as self.session:
+                                         conn_timeout=0.8, read_timeout=1) as self.session:
             self.start_time = time.time()
             # print("create session Success")
             # print("startindex Scan Ip")
@@ -163,6 +167,17 @@ class Test_Ip:
             pass
         else:
             await self.Running
+        activeprocess = ActiveProcess.get()
+        if activeprocess == 1:
+                try:
+                    index = self.ipfactory.getIndex()
+                except Exception as e:
+                    print(e)
+                else:
+                    with open("ip_has_find.txt", "w") as f:
+                        f.write(str(index))
+
+        ActiveProcess.put(activeprocess - 1)
         print("Success stop")
         return True
 
