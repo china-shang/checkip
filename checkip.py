@@ -8,6 +8,7 @@ import os
 from multiprocessing import Process, Queue
 import random
 import get_ip
+import profile
 
 ipList = Queue()
 with open("ip_range.txt") as fd:
@@ -19,9 +20,8 @@ if os.path.exists("ip_has_find.txt"):
         ipHasFind = int(f.read()) % iprangelen
 else:
     ipHasFind = random.randint(0, iprangelen - 1)
-ipHasFind = 704
 
-ProcessSum = 2
+ProcessSum = 1
 ActiveProcess = Queue()
 ActiveProcess.put(ProcessSum)
 
@@ -115,7 +115,7 @@ class Test_Ip:
             self.loop.create_task(self.SaveIp())
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True),
-                                         conn_timeout=0.8, read_timeout=1) as self.session:
+                                         conn_timeout=0.7, read_timeout=0.8) as self.session:
             self.start_time = time.time()
             # print("create session Success")
             # print("startindex Scan Ip")
@@ -194,7 +194,8 @@ class CheckProcess(Process):
             ipfactory = get_ip.ipFactory(self.q, self.iprange)
             testip = Test_Ip(loop, ipfactory)
             loop.create_task(testip.Server())
-            loop.run_until_complete(testip.SuccessStop())
+            profile.runctx("loop.run_until_complete(testip.SuccessStop())", globals(), locals())
+            #loop.run_until_complete(testip.SuccessStop())
 
         except (KeyboardInterrupt, SystemExit) as e:
             loop.create_task(testip.stop())
@@ -230,3 +231,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
