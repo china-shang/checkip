@@ -16,7 +16,7 @@ class ipFactory:
         self.q.put((self.nowIndex + 1) % self.iprangelen)
         self.generateIP()
         self.GoodRange = set()
-        self.getFromGood = False
+        self.getFromGood = True
         self.getGoodRange()
         print("Now Index:%4d" % self.nowIndex)
 

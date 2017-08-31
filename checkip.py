@@ -23,7 +23,7 @@ if os.path.exists("ip_has_find.txt"):
 else:
     ipHasFind = random.randint(0, iprangelen - 1)
 
-ProcessSum = 4
+ProcessSum = 2
 ActiveProcess = Queue()
 ActiveProcess.put(ProcessSum)
 
@@ -83,7 +83,7 @@ class Test_Ip:
         except asyncio.TimeoutError as e:
             return False
         except BaseException as e:
-            print(e)
+            #print(e)
             return False
 
     async def worker(self):
