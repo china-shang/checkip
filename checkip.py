@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import asyncio
-import aiohttp
+from async_timeout import timeout
 import ssl
+import urllib.parse
 import time
 import os
 from multiprocessing import Process, Queue
@@ -46,24 +47,42 @@ class Test_Ip:
 
     async def test(self, ip):
         start_time = time.time()
+        len = 0
 
         try:
-            async with self.session.request("GET", "https://%s/_gh/" % ip, headers={"Host": "my-project-1-1469878073076.appspot.com"}, ) as resp:
-                headers = resp.headers
-                len = headers.get('Content-Length', '')
-
-                if int(len) == 86:
-                    end_time = time.time()
-                    time_used = end_time - start_time
-                    self.d[ip] = time_used
-                    return True
+            with timeout(1.0):
+                con = asyncio.open_connection(ip, 443, ssl=self.context)
+                reader, writer = await con
+                appid = "my-project-1-1469878073076"
+                query = 'GET /_gh/ HTTP/1.1\r\nHost: %s.appspot.com\r\n\r\n' % appid
+                writer.write(query.encode())
+                while True:
+                    line = await reader.readline()
+                    if not line:
+                        break
+                    if line:
+                        line = line.decode().rstrip()
+                        #print('HTTP header> %s' % line)
+                    if "Content-Length" in line:
+                        len = int(line.split(":")[-1])
+                        break
+                writer.close()
+            if int(len) == 86:
+                end_time = time.time()
+                time_used = end_time - start_time
+                self.d[ip] = time_used
+                return True
+            return False
 
         except (KeyboardInterrupt, SystemExit) as e:
             print("this worker")
             if self._running:
                 self._running = False
                 self.loop.create_task(self.stop())
+        except asyncio.TimeoutError as e:
+            return False
         except BaseException as e:
+            print(e)
             return False
 
     async def worker(self):
@@ -74,6 +93,10 @@ class Test_Ip:
 
                 success = await self.test(ip)
                 self.ipSum += 1
+                if not self.ipSum % 2000:
+                    print("Has check ip :%d" % self.ipSum)
+                    print("speed:%d" % (self.ipSum /
+                                        (time.time() - self.start_time)))
 
                 if success:
                     if self.index not in self.indexDict:
@@ -82,9 +105,11 @@ class Test_Ip:
                         self.indexDict[self.index] += 1
 
                     self.ipSuccessSum += 1
-                    print(
-                        "pid:", os.getpid(), "\ttime:%ds\t" %
-                        (time.time() - self.start_time))
+                    # print(
+                        #"pid:", os.getpid(), "\ttime:%ds\t" %
+                        #(time.time() - self.start_time))
+                    print("speed:%d" % (self.ipSum /
+                                        (time.time() - self.start_time)))
                     print(ip, "\tdelay:\t%.2f" % self.d[ip])
                     print(
                         "Success:%4d\tin:%4d" %
@@ -108,17 +133,13 @@ class Test_Ip:
     async def Server(self):
         self.Running = asyncio.Future()
         self.startindexIndex = self.ipfactory.getIndex()
-        context = ssl.create_default_context()
-        context.check_hostname = False
+        self.context = ssl.create_default_context()
+        self.context.check_hostname = False
 
         if(not self.scan):
             self.loop.create_task(self.SaveIp())
 
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl_context=context, force_close=True),
-                                         conn_timeout=0.7, read_timeout=0.8) as self.session:
             self.start_time = time.time()
-            # print("create session Success")
-            # print("startindex Scan Ip")
             while self._running:
                 if self.now < self.max:
                     self.now += 1
@@ -169,13 +190,13 @@ class Test_Ip:
             await self.Running
         activeprocess = ActiveProcess.get()
         if activeprocess == 1:
-                try:
-                    index = self.ipfactory.getIndex()
-                except Exception as e:
-                    print(e)
-                else:
-                    with open("ip_has_find.txt", "w") as f:
-                        f.write(str(index))
+            try:
+                index = self.ipfactory.getIndex()
+            except Exception as e:
+                print(e)
+            else:
+                with open("ip_has_find.txt", "w") as f:
+                    f.write(str(index))
 
         ActiveProcess.put(activeprocess - 1)
         print("Success stop")
@@ -194,8 +215,11 @@ class CheckProcess(Process):
             ipfactory = get_ip.ipFactory(self.q, self.iprange)
             testip = Test_Ip(loop, ipfactory)
             loop.create_task(testip.Server())
-            profile.runctx("loop.run_until_complete(testip.SuccessStop())", globals(), locals())
-            #loop.run_until_complete(testip.SuccessStop())
+            profile.runctx(
+                "loop.run_until_complete(testip.SuccessStop())",
+                globals(),
+                locals())
+            # loop.run_until_complete(testip.SuccessStop())
 
         except (KeyboardInterrupt, SystemExit) as e:
             loop.create_task(testip.stop())
@@ -231,4 +255,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
