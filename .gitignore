@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+find_log0.txt
+ip_has_find.txt
