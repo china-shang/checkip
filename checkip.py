@@ -12,6 +12,7 @@ import get_ip
 import profile
 
 ipList = Queue()
+GoodIpRange = Queue()
 with open("ip_range.txt") as fd:
     iprange = fd.read()
     iprangelen = iprange.count('\n')
@@ -22,7 +23,7 @@ if os.path.exists("ip_has_find.txt"):
 else:
     ipHasFind = random.randint(0, iprangelen - 1)
 
-ProcessSum = 1
+ProcessSum = 4
 ActiveProcess = Queue()
 ActiveProcess.put(ProcessSum)
 
@@ -167,20 +168,44 @@ class Test_Ip:
         # with open(file_name, "w") as f:
             # f.write(str(self.index))
         # print("index saved:", self.index)
-        file_name = "find_log" + str(self.num) + ".txt"
-        with open(file_name, "a") as f:
-            for i in self.indexDict.items():
-                print(i[0], ":", i[1])
-                f.write(str(i[0]) + ":" + str(i[1]) + "\n")
+        if ProcessSum < 1:
+            file_name = "find_log" + str(self.num) + ".txt"
+            with open(file_name) as f:
+                s = f.readlines()
+
+            d = dict([[int(i.split(":")[0]), int(i.split(":")[-1])]
+                      for i in list(map(lambda x:x[:-1], s))])
+
+            d.update(self.indexDict)
+            with open(file_name, "w") as f:
+                for i in d.items():
+                    print(i[0], ":", i[1])
+                    f.write(str(i[0]) + ":" + str(i[1]) + "\n")
+        else:
+            GoodIpRange.put(self.indexDict)
+
         if not self.Running.done():
             self.Running.set_result("stoped")
         return True
 
     async def SaveIp(self):
-        while self._running:
-            ip = await self.q.get()
-            if ip != "end":
-                ipList.put(ip)
+        if ProcessSum > 1:
+            while self._running:
+                ip = await self.q.get()
+                if ip != "end":
+                    ipList.put(ip)
+        else:
+            with open("ip.txt", "w") as f:
+                sum = 0
+                while self._running:
+                    ip = await self.q.get()
+                    if ip == "end":
+                        break
+                    s = ip + "|"
+                    f.write(s)
+                    sum += 1
+                    print("All Sucess Ip:%4d" % sum)
+
         self.now -= 1
 
     async def SuccessStop(self):
@@ -233,24 +258,62 @@ class CheckProcess(Process):
 def main():
     global iprange, ipHasFind
     print("Process Sum:", ProcessSum)
-    q = Queue()
-    q.put(ipHasFind)
-    for i in range(ProcessSum):
-        print("Start Process:", i)
-        p = CheckProcess(q, iprange)
-        p.start()
+    if ProcessSum > 1:
+        q = Queue()
+        q.put(ipHasFind)
+        for i in range(ProcessSum):
+            print("Start Process:", i)
+            p = CheckProcess(q, iprange)
+            p.start()
 
-    try:
-        with open("ip.txt", "w") as f:
-            sum = 0
-            while True:
-                ip = ipList.get()
-                s = ip + "|"
-                f.write(s)
-                sum += 1
-                print("All Sucess Ip:%4d" % sum)
-    except (KeyboardInterrupt, SystemExit) as e:
-        print("main exited")
+        try:
+            with open("ip.txt", "w") as f:
+                sum = 0
+                while True:
+                    ip = ipList.get()
+                    s = ip + "|"
+                    f.write(s)
+                    sum += 1
+                    print("All Sucess Ip:%4d" % sum)
+        except (KeyboardInterrupt, SystemExit) as e:
+            print("main exited")
+        finally:
+            file_name = "find_log" +"0"  + ".txt"
+            with open(file_name) as f:
+                s = f.readlines()
+
+            d = dict([[int(i.split(":")[0]), int(i.split(":")[-1])]
+                      for i in list(map(lambda x:x[:-1], s))])
+
+            while GoodIpRange.qsize() > 0:
+                nowdict = GoodIpRange.get()
+                d.update(nowdict)
+
+            with open(file_name, "w") as f:
+                for i in d.items():
+                    print(i[0], ":", i[1])
+                    f.write(str(i[0]) + ":" + str(i[1]) + "\n")
+    else:
+        try:
+            q = Queue()
+            q.put(ipHasFind)
+            loop = asyncio.get_event_loop()
+            ipfactory = get_ip.ipFactory(q, iprange)
+            testip = Test_Ip(loop, ipfactory)
+            loop.create_task(testip.Server())
+            profile.runctx(
+                "loop.run_until_complete(testip.SuccessStop())",
+                globals(),
+                locals())
+            # loop.run_until_complete(testip.SuccessStop())
+
+        except (KeyboardInterrupt, SystemExit) as e:
+            loop.create_task(testip.stop())
+            loop.run_until_complete(testip.SuccessStop())
+
+        finally:
+            loop.close()
+            print("Task exit")
 
 
 if __name__ == "__main__":
