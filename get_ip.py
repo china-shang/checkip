@@ -8,25 +8,31 @@ import logging
 
 class ipFactory:
     def __init__(self, q, IprangeStr):
+
         self.q = q
         self.ipRange = IprangeStr.split('\n')
         self.iprangelen = IprangeStr.count('\n')
+
         self.nowIndex = self.q.get()
         self.deadLine = self.nowIndex
         self.q.put((self.nowIndex + 1) % self.iprangelen)
+
         self.generateIP()
+
         self.GoodRange = set()
         self.getFromGood = True
         self.getGoodRange()
+
         print("Now Index:%4d" % self.nowIndex)
 
     def getGoodRange(self):
-        with open("find_log0.txt") as f:
-            s = f.readlines()
-        self.GoodRange = set([int(i.split(":")[0]) for i in s])
-        self._GoodRange = self.GoodRange.copy()
         if not self.getFromGood:
             self.GoodRange = set()
+        else:
+            with open("find_log0.txt") as f:
+                s = f.readlines()
+            self.GoodRange = set([int(i.split(":")[0]) for i in s])
+        self._GoodRange = self.GoodRange.copy()
 
     def generateIP(self):
         l1 = [[ipaddress.ip_address(ip.split('-')[0]),

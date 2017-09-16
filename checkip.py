@@ -11,6 +11,7 @@ import random
 import get_ip
 import profile
 
+ipTimeout = 1.5
 ipList = Queue()
 GoodIpRange = Queue()
 with open("ip_range.txt") as fd:
@@ -23,7 +24,7 @@ if os.path.exists("ip_has_find.txt"):
 else:
     ipHasFind = random.randint(0, iprangelen - 1)
 
-ProcessSum = 2
+ProcessSum = 4
 ActiveProcess = Queue()
 ActiveProcess.put(ProcessSum)
 
@@ -32,18 +33,24 @@ class Test_Ip:
     def __init__(self, loop, ipfactory):
         global ipList
         self.loop = loop
-        self.indexDict = dict()
-        self.d = dict()
         self.ipfactory = ipfactory
         self.q = asyncio.Queue()
+
+        self.indexDict = dict()
+        self.d = dict()
+
         self.max = 64
         self.now = 1
+
         self._running = True
         self.future = None
+
         self.scan = False
         self.num = 0
+
         self.ipSum = 0
         self.ipSuccessSum = 0
+
         self.getip = self.ipfactory.getIp
 
     async def test(self, ip):
@@ -51,12 +58,13 @@ class Test_Ip:
         len = 0
 
         try:
-            with timeout(1.0):
+            with timeout(ipTimeout):
                 con = asyncio.open_connection(ip, 443, ssl=self.context)
                 reader, writer = await con
                 appid = "my-project-1-1469878073076"
                 query = 'GET /_gh/ HTTP/1.1\r\nHost: %s.appspot.com\r\n\r\n' % appid
                 writer.write(query.encode())
+
                 while True:
                     line = await reader.readline()
                     if not line:
@@ -68,11 +76,13 @@ class Test_Ip:
                         len = int(line.split(":")[-1])
                         break
                 writer.close()
+
             if int(len) == 86:
                 end_time = time.time()
                 time_used = end_time - start_time
                 self.d[ip] = time_used
                 return True
+
             return False
 
         except (KeyboardInterrupt, SystemExit) as e:
@@ -80,10 +90,12 @@ class Test_Ip:
             if self._running:
                 self._running = False
                 self.loop.create_task(self.stop())
+
         except asyncio.TimeoutError as e:
             return False
+
         except BaseException as e:
-            #print(e)
+            # print(e)
             return False
 
     async def worker(self):
@@ -109,6 +121,7 @@ class Test_Ip:
                     # print(
                         #"pid:", os.getpid(), "\ttime:%ds\t" %
                         #(time.time() - self.start_time))
+
                     print("speed:%d" % (self.ipSum /
                                         (time.time() - self.start_time)))
                     print(ip, "\tdelay:\t%.2f" % self.d[ip])
@@ -240,6 +253,7 @@ class CheckProcess(Process):
             ipfactory = get_ip.ipFactory(self.q, self.iprange)
             testip = Test_Ip(loop, ipfactory)
             loop.create_task(testip.Server())
+
             profile.runctx(
                 "loop.run_until_complete(testip.SuccessStop())",
                 globals(),
@@ -278,7 +292,7 @@ def main():
         except (KeyboardInterrupt, SystemExit) as e:
             print("main exited")
         finally:
-            file_name = "find_log" +"0"  + ".txt"
+            file_name = "find_log" + "0" + ".txt"
             with open(file_name) as f:
                 s = f.readlines()
 
@@ -297,10 +311,13 @@ def main():
         try:
             q = Queue()
             q.put(ipHasFind)
+
             loop = asyncio.get_event_loop()
             ipfactory = get_ip.ipFactory(q, iprange)
+
             testip = Test_Ip(loop, ipfactory)
             loop.create_task(testip.Server())
+
             profile.runctx(
                 "loop.run_until_complete(testip.SuccessStop())",
                 globals(),
